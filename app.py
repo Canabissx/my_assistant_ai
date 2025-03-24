@@ -4,7 +4,8 @@ import requests
 from bs4 import BeautifulSoup
 import logging
 import os
-import torch  # Dodane na początku dla lepszego zarządzania pamięcią
+import torch
+import gc
 
 app = Flask(__name__)
 
@@ -12,60 +13,30 @@ app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Optymalizacja zużycia pamięci
 def cleanup_memory():
+    """Czyści pamięć RAM i GPU."""
+    gc.collect()
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
-    import gc
-    gc.collect()
 
-# Inicjalizacja modeli AI z pełną obsługą błędów
+# Wykrywanie GPU
+USE_GPU = torch.cuda.is_available()
+device = 0 if USE_GPU else -1
+
+# Inicjalizacja modeli AI
 try:
-    text_generator = pipeline(
-        "text-generation",
-        model="distilgpt2",
-        device=-1,
-        torch_dtype=torch.float16,  # Użyj 16-bitowej precyzji
-        framework="pt",
-        model_kwargs={
-            "load_in_8bit": True,
-            "low_cpu_mem_usage": True
-        }
-    )
+    text_generator = pipeline("text-generation", model="EleutherAI/gpt-neo-125M", device=device)
     logger.info("Model generujący załadowany pomyślnie")
-    cleanup_memory()
 except Exception as e:
     logger.error(f"Błąd ładowania modelu generującego: {e}")
     text_generator = None
 
 try:
-    summarizer = pipeline(
-        "summarization",
-        model="sshleifer/distilbart-cnn-6-6",
-        device=-1,
-        torch_dtype=torch.float16,  # Użyj 16-bitowej precyzji
-        framework="pt",
-        model_kwargs={
-            "load_in_8bit": True,
-            "low_cpu_mem_usage": True
-        }
-    )
+    summarizer = pipeline("summarization", model="sshleifer/distilbart-cnn-6-6", device=device)
     logger.info("Model podsumowujący załadowany pomyślnie")
-    cleanup_memory()
 except Exception as e:
     logger.error(f"Błąd ładowania modelu podsumowującego: {e}")
     summarizer = None
-
-# Konfiguracja Flask dla produkcji
-app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
-app.config['TEMPLATES_AUTO_RELOAD'] = False
-app.config['MAX_CONTENT_LENGTH'] = 1 * 1024 * 1024  # Limit 1MB dla requestów
-
-# Middleware do czyszczenia pamięci
-@app.after_request
-def clear_cache(response):
-    cleanup_memory()
-    return response
 
 @app.route('/')
 def home():
@@ -107,13 +78,8 @@ def generate():
         if not topic:
             return render_template('error.html', message="Proszę podać temat")
         
-        prompt = f"Napisz krótki post (max 2 zdania) o: {topic}"
-        result = text_generator(
-            prompt,
-            max_length=100,
-            num_return_sequences=1,
-            temperature=0.7  # Kontrola kreatywności
-        )
+        prompt = f"Napisz krótki post o: {topic}"
+        result = text_generator(prompt, max_length=100, num_return_sequences=1, temperature=0.7)
         post = result[0]['generated_text'].split('\n')[0]
         cleanup_memory()
         return render_template('generate.html', post=post)
@@ -124,10 +90,4 @@ def generate():
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
-    app.run(
-        host='0.0.0.0',
-        port=port,
-        debug=False,
-        threaded=True,
-        processes=1  # Ograniczenie do jednego procesu
-    )
+    app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
