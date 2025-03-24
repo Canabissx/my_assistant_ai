@@ -29,12 +29,12 @@ except Exception as e:
     text_generator = None
 
 try:
-    # Lżejszy model do podsumowań
     summarizer = pipeline(
         "summarization",
-        model="facebook/bart-large-cnn",
+        model="sshleifer/distilbart-cnn-12-6",  # Lżejsza wersja BART-a
         device=-1,
-        torch_dtype="auto"
+        torch_dtype="auto",
+        framework="pt"
     )
     logger.info("Model summarization załadowany pomyślnie")
 except Exception as e:
@@ -84,14 +84,19 @@ def generate():
     if not text_generator:
         return render_template('error.html', message="Model generujący nie jest dostępny")
     
-    topic = request.form.get('topic', '').strip()
-    if not topic:
-        return render_template('error.html', message="Proszę podać temat")
-    
     try:
+        topic = request.form.get('topic', '').strip()
+        if not topic:
+            return render_template('error.html', message="Proszę podać temat")
+        
         prompt = f"Napisz krótki post na Instagram (max 3 zdania) o temacie: {topic}"
-        result = text_generator(prompt, max_length=200, num_return_sequences=1)
-        post = result[0]['generated_text'].split('\n')[0]  # Pierwsza linia
+        result = text_generator(prompt, max_length=150, num_return_sequences=1)  # Zmniejszone max_length
+        post = result[0]['generated_text'].split('\n')[0]
+        
+        # Wymuś czyszczenie pamięci
+        import torch
+        torch.cuda.empty_cache() if torch.cuda.is_available() else None
+        
         return render_template('generate.html', post=post)
     
     except Exception as e:
