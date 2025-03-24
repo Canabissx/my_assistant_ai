@@ -1,6 +1,9 @@
+numpy<2.0.0
 flask==2.3.2
 transformers==4.30.2
 torch==2.0.1
 beautifulsoup4==4.12.2
 requests==2.31.0
 gunicorn==20.1.0
+sentencepiece==0.1.99  # Wymagane dla BART
+protobuf==3.20.3  # Wymagane przez transformers
