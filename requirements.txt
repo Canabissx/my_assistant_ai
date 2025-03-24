@@ -7,6 +7,5 @@ requests==2.31.0
 gunicorn==20.1.0
 sentencepiece==0.1.99
 protobuf==3.20.3
-accelerate==0.21.0
-bitsandbytes==0.43.0
 accelerate==0.29.3
+bitsandbytes==0.43.0
