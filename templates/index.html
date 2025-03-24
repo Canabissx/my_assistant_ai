@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Social Media Expert</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Asystent Social Media</h1>
+        
+        <form action="/analyze" method="POST">
+            <h2>Analiza strony</h2>
+            <input type="url" name="url" placeholder="https://przykladowastrona.pl" required>
+            <button type="submit">Analizuj</button>
+        </form>
+
+        <form action="/generate" method="POST">
+            <h2>Generator postów</h2>
+            <input type="text" name="topic" placeholder="np. ekologiczne kosmetyki" required>
+            <button type="submit">Generuj post</button>
+        </form>
+    </div>
+</body>
+</html>

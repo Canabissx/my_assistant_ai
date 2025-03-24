@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Chat z Asystentem AI</h1>
+<div class="chat-box">
+    {% for msg in chat_history %}
+        <div class="user-message">{{ msg.user }}</div>
+        <div class="ai-message">{{ msg.ai }}</div>
+    {% endfor %}
+</div>
+<form method="POST">
+    <input type="text" name="message" placeholder="Zadaj pytanie..." required>
+    <button type="submit">Wyślij</button>
+</form>
+{% endblock %}
