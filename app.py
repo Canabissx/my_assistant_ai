@@ -3,6 +3,7 @@ from transformers import pipeline
 import requests
 from bs4 import BeautifulSoup
 import logging
+import os
 
 app = Flask(__name__)
 
@@ -12,17 +13,19 @@ logger = logging.getLogger(__name__)
 
 # Inicjalizacja modeli AI z pełną obsługą błędów
 try:
-    # Mniejszy model do generowania tekstu
     text_generator = pipeline(
         "text-generation",
         model="distilgpt2",
-        device=-1,  # Wymusza użycie CPU
+        device=-1,
         torch_dtype="auto",
-        max_length=150  # Ograniczenie długości tekstu
+        framework="pt",  # Explicitly use PyTorch
+        use_auth_token=False  # Disable if not using private models
     )
-    logger.info("Model text-generation załadowany pomyślnie")
+    # Immediately free up memory after initialization
+    import torch
+    torch.cuda.empty_cache() if torch.cuda.is_available() else None
 except Exception as e:
-    logger.error(f"Błąd ładowania modelu generującego: {str(e)}")
+    logger.error(f"Model loading failed: {e}")
     text_generator = None
 
 try:
@@ -37,6 +40,13 @@ try:
 except Exception as e:
     logger.error(f"Błąd ładowania modelu podsumowującego: {str(e)}")
     summarizer = None
+
+import transformers
+transformers.logging.set_verbosity_error()
+
+# Configure Flask for production
+app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
+app.config['TEMPLATES_AUTO_RELOAD'] = False
 
 @app.route('/')
 def home():
@@ -89,4 +99,5 @@ def generate():
         return render_template('error.html', message=f"Błąd generowania: {str(e)}")
 
 if __name__ == '__main__':
-    app.run(debug=False)  # Debug=False dla środowiska produkcyjnego
+    port = int(os.environ.get("PORT", 5000))  # Render uses $PORT environment variable
+    app.run(host='0.0.0.0', port=port, debug=False)
